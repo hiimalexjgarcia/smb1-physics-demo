@@ -1,0 +1,85 @@
+# SMB Movement Demo (Vite + TypeScript)
+
+A small browser demo that moves a block on a canvas using **Super Mario Bros. 1–inspired player movement physics** (horizontal acceleration/friction, jump tiers, variable jump height, and gravity) derived from static analysis of an SMB1 PRG image and correlation with the [`SMBDIS.ASM`](https://gist.github.com/1wErt3r/4048722) disassembly.
+
+The project is built with **Vite** and **TypeScript** (vanilla, no framework).
+
+## Controls
+
+| Input | Action |
+| --- | --- |
+| `W` `A` `S` `D` | Directional input (Up / Left / Down / Right) |
+| `Space` | Jump (**A** button). Hold briefly after takeoff for a higher jump (variable jump height), release to cut the jump short (SMB-style). |
+| `Shift` | Run (**B** button) |
+| `R` | Reset player/camera |
+
+The canvas scales to the available width and keeps its aspect ratio on window resize.
+
+## Getting started
+
+### Prerequisites
+
+- Node.js and npm (tested with recent Node/npm; Vite 6 / TypeScript 5)
+
+### Install and run
+
+```bash
+npm install
+npm run dev
+```
+
+Then open the local URL printed by Vite.
+
+### Build and preview
+
+```bash
+npm run build
+npm run preview
+```
+
+> `npm run build` runs `tsc && vite build`. If `tsc` is not on your `PATH`, use the local binaries (e.g. `./node_modules/.bin/tsc && ./node_modules/.bin/vite build`) or run via npm scripts after install.
+
+## Project structure
+
+```text
+.
+├─ index.html                 # App shell and canvas
+├─ package.json               # Scripts and dev dependencies (Vite, TypeScript)
+├─ tsconfig.json
+├─ src/
+│  ├─ main.ts                 # Input, fixed-step loop, camera, rendering, demo collisions
+│  ├─ smbPhysics.ts           # SMB-derived physics/state and integration routines
+│  └─ style.css               # Responsive layout and canvas styling
+└─ docs/
+   └─ binary-analysis.md      # Binary analysis and disassembly-correlation notes
+```
+
+## How the physics maps to SMB1
+
+The core logic in [`src/smbPhysics.ts`](src/smbPhysics.ts) models (land, non-water subset) the behavior of SMB routines and tables correlated from `SMBDIS.ASM` / PRG analysis, including:
+
+- **Jump initiation and tiers** (`ProcJumping` / speed-tier selection): initial vertical speed and jump/fall force parameters from `PlayerYSpdData`, `JumpMForceData`, `FallMForceData`, `InitMForceData` based on horizontal speed.
+- **Variable jump height** (`JumpSwimSub`): hold **A** across frames (and/or within `DiffToHaltJump` from the jump origin) to keep lighter `VerticalForce`; release/fall uses heavier `VerticalForceDown`.
+- **Gravity/integration** (`ImposeGravity` / `MovePlayerVertically`): velocity-first integration with fractional accumulators, signed speeds, and SMB-style clamping.
+- **Horizontal movement** (`X_Physics`, `ImposeFriction`, `MovePlayerHorizontally`): max-speed and friction tiers from `MaxLeftXSpdData`, `MaxRightXSpdData`, `FrictionData`, with running/skid-related side effects modeled for movement.
+
+**Implementation detail:** NES math uses unsigned byte ADC/SBC carries with separate sign-extension for high bytes; position integration preserves this (not signed-JS carry math) so left/up movement behaves correctly. See [docs/binary-analysis.md](docs/binary-analysis.md) for details.
+
+## Demo environment vs. original game
+
+This is **not** a full SMB1 engine. The demo provides a canvas "block" player, a flat ground, a few platforms, camera follow, and a debug HUD. The following are simplified or out of scope compared to the original: BG/tile collision, swimming/climbing, enemies/objects, slopes, power-up/damage states, exact scroll/camera rules, and complete animation/audio/timer subsystems.
+
+## Binary analysis
+
+Background on the analyzed artifact (`smb_prg_8000.bin` headerless PRG, 6502 at `$8000`), observed vectors/flow, correlated routines/variables/tables, and implementation findings (including the carry-semantics fix) are documented in:
+
+- [docs/binary-analysis.md](docs/binary-analysis.md)
+
+## Development notes
+
+- **Refactor:** `smbPhysics.ts` was refactored for readability (named constants for SMB states/directions/tables, structured sections, routine-level docs) while preserving physics behavior.
+- **Responsive canvas:** the render buffer remains 512×480; CSS scales the canvas to max width with fixed aspect ratio.
+
+## Disclaimer
+
+Super Mario Bros. is property of Nintendo. This repository is an educational reverse-engineering/physics-recreation exercise; no original game assets or ROM contents are distributed here.
