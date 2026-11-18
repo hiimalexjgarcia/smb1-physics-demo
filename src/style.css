@@ -1,0 +1,35 @@
+:root {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  color: #e8e8e8;
+  background: #1a1a1a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; display: flex; justify-content: center; }
+#app {
+  width: 100%;
+  max-width: 100%;
+  padding: 16px;
+}
+h1 { margin: 0 0 4px; font-size: 20px; }
+.hint { margin: 0 0 8px; color: #aaa; font-size: 14px; }
+#game {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 512 / 480;
+  border: 2px solid #444;
+  background: #5c94fc; /* SMB-like sky */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+#debug {
+  margin-top: 8px;
+  padding: 8px;
+  background: #111;
+  border: 1px solid #333;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #9fdf9f;
+  overflow: auto;
+}
