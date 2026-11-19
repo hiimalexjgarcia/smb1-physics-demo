@@ -6,14 +6,18 @@ The project is built with **Vite** and **TypeScript** (vanilla, no framework).
 
 ## Controls
 
+**Keyboard**
+
 | Input | Action |
 | --- | --- |
-| `W` `A` `S` `D` | Directional input (Up / Left / Down / Right) |
+| `W` `A` `S` `D` or Arrow keys | Directional input (Up / Left / Down / Right) |
 | `Space` | Jump (**A** button). Hold briefly after takeoff for a higher jump (variable jump height), release to cut the jump short (SMB-style). |
 | `Shift` | Run (**B** button) |
 | `R` | Reset player/camera |
 
-The canvas scales to the available width and keeps its aspect ratio on window resize.
+**Mobile / touch**
+
+On-screen controls appear below the canvas: a directional pad plus **A** (Jump), **B** (Run), and Reset buttons. Touch and hold buttons for continuous input (including holding Jump for a higher jump). The canvas renders at 512×480 internally and scales to fit smaller screens.
 
 ## Getting started
 
@@ -49,7 +53,7 @@ npm run preview
 ├─ src/
 │  ├─ main.ts                 # Input, fixed-step loop, camera, rendering, demo collisions
 │  ├─ smbPhysics.ts           # SMB-derived physics/state and integration routines
-│  └─ style.css               # Responsive layout and canvas styling
+│  └─ style.css               # Layout, responsive canvas, and touch controls styling
 └─ docs/
    └─ binary-analysis.md      # Binary analysis and disassembly-correlation notes
 ```
@@ -78,7 +82,7 @@ Background on the analyzed artifact (`smb_prg_8000.bin` headerless PRG, 6502 at 
 ## Development notes
 
 - **Refactor:** `smbPhysics.ts` was refactored for readability (named constants for SMB states/directions/tables, structured sections, routine-level docs) while preserving physics behavior.
-- **Responsive canvas:** the render buffer remains 512×480; CSS scales the canvas to max width with fixed aspect ratio.
+- **Responsive canvas:** the game renders to a 512×480 buffer and scales to fit smaller screens while preserving aspect ratio (pixelated). On-screen touch controls support mobile play.
 
 ## Disclaimer
 
