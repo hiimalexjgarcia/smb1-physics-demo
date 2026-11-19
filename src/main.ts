@@ -35,12 +35,28 @@ let cameraX = 0;
 
 let blinkUntil = 0;
 let nextBlinkAt = performance.now() + 1500 + Math.random() * 3000;
+let lastActiveAt = performance.now();
 
 function updateBlink(now: number) {
   if (now >= nextBlinkAt) {
     blinkUntil = now + 90 + Math.random() * 70;
     nextBlinkAt = now + 1800 + Math.random() * 3500;
   }
+}
+
+function isPlayerActive(btn: Buttons): boolean {
+  return (
+    btn.left ||
+    btn.right ||
+    btn.up ||
+    btn.down ||
+    btn.a ||
+    btn.b ||
+    player.xSpeed !== 0 ||
+    player.ySpeed !== 0 ||
+    !player.onGround ||
+    player.playerState !== 0
+  );
 }
 
 function reset() {
@@ -50,6 +66,7 @@ function reset() {
   player.onGround = true;
   player.playerState = 0;
   cameraX = 0;
+  lastActiveAt = performance.now();
 }
 
 window.addEventListener('keydown', (e) => {
@@ -149,7 +166,7 @@ function applyPlatformLandings(prevPy: number) {
   }
 }
 
-function draw() {
+function draw(idleLooking: boolean) {
   ctx.fillStyle = '#5c94fc';
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -188,7 +205,7 @@ function draw() {
   ctx.fillStyle = '#f8d878';
   ctx.fillRect(sx + 2, sy + 4, 12, 10);
   ctx.fillStyle = '#6b3f00';
-  const eyeX = player.facingDir === 1 ? sx + 9 : sx + 3;
+  const eyeX = idleLooking ? sx + 6 : player.facingDir === 1 ? sx + 9 : sx + 3;
   const blinking = performance.now() < blinkUntil;
   if (blinking) {
     ctx.fillRect(eyeX, sy + 8, 4, 1);
@@ -225,7 +242,11 @@ function frame(now: number) {
     applyPlatformLandings(prevPy);
     acc -= STEP;
   }
-  draw();
+  if (isPlayerActive(btn)) {
+    lastActiveAt = now;
+  }
+  const idleLooking = now - lastActiveAt >= 5000;
+  draw(idleLooking);
   debugEl.textContent =
     debugInfo(player, btn) +
     "\n\nControls: WASD move, SPACE jump (A), SHIFT run (B), R reset\n" +
