@@ -41,6 +41,8 @@ export const PlayerMotionState = {
   Falling: 2,
 } as const;
 
+export type PlayerMotionStateValue = (typeof PlayerMotionState)[keyof typeof PlayerMotionState];
+
 /** Direction encoding used by SMB movement logic: 1 = right, 2 = left. */
 export const Direction = {
   Right: 1,
@@ -78,7 +80,7 @@ export interface PlayerState {
 
   // --- Mode/direction ---
   /** Player_State ($1D): 0 ground, 1 jump/swim, 2 falling */
-  playerState: number;
+  playerState: PlayerMotionStateValue;
   /** PlayerFacingDir: 1 right, 2 left */
   facingDir: DirectionValue;
   /** Player_MovingDir: 1 right, 2 left */
@@ -154,10 +156,6 @@ const FRICTION_DATA = [0xe4, 0x98, 0xd0] as const;
 // ---------------------------------------------------------------------------
 // Small domain helpers
 // ---------------------------------------------------------------------------
-
-function isRight(dir: number): boolean {
-  return dir === Direction.Right;
-}
 
 function isLeft(dir: number): boolean {
   return dir === Direction.Left;
@@ -637,7 +635,7 @@ function fallingSub(p: PlayerState, btn: Buttons): void {
 }
 
 // ---------------------------------------------------------------------------
-// Demo step / environment glue
+// Step integration (SMB core + demo environment helpers)
 // ---------------------------------------------------------------------------
 
 /** Ensure fall forces are initialized (e.g. ledge drop without a jump tier context). */
@@ -647,12 +645,12 @@ function ensureFallForces(p: PlayerState): void {
 }
 
 /**
- * Advance one physics frame.
+ * Advance one SMB-physics frame (core movement dispatch).
  *
  * SMB core: PlayerPhysicsSub + dispatch by Player_State to the movement sub.
- * Demo glue: simple ground landing at groundY and onGround transitions.
+ * Demo/environment collision (ground/platforms) is resolved by the caller.
  */
-export function stepPlayer(p: PlayerState, btn: Buttons, groundY: number): void {
+export function stepPlayerPhysics(p: PlayerState, btn: Buttons): void {
   if (p.onGround) p.playerState = PlayerMotionState.OnGround;
 
   playerPhysicsSub(p, btn);
@@ -666,8 +664,14 @@ export function stepPlayer(p: PlayerState, btn: Buttons, groundY: number): void 
     fallingSub(p, btn);
   }
 
-  // Demo collision/landing against a flat ground line
-  const playerHeight = 32;
+  p.prevA = btn.a;
+}
+
+/**
+ * Demo collision/landing against a flat ground line and ledge/fall transitions.
+ * SMB resolves this via BG/tile collision in-engine.
+ */
+export function resolveDemoGround(p: PlayerState, groundY: number, playerHeight: number): void {
   const py = getPlayerPixelY(p);
 
   if (py + playerHeight >= groundY) {
@@ -677,17 +681,16 @@ export function stepPlayer(p: PlayerState, btn: Buttons, groundY: number): void 
     p.yMFDummy = 0;
     p.playerState = PlayerMotionState.OnGround;
     p.onGround = true;
-  } else {
-    p.onGround = false;
-
-    if (p.playerState === PlayerMotionState.OnGround) {
-      // Walked off a ledge
-      p.playerState = PlayerMotionState.Falling;
-      ensureFallForces(p);
-    } else if (p.playerState === PlayerMotionState.Jumping && s8(p.ySpeed) >= 0) {
-      p.playerState = PlayerMotionState.Falling;
-    }
+    return;
   }
 
-  p.prevA = btn.a;
+  p.onGround = false;
+
+  if (p.playerState === PlayerMotionState.OnGround) {
+    // Walked off a ledge
+    p.playerState = PlayerMotionState.Falling;
+    ensureFallForces(p);
+  } else if (p.playerState === PlayerMotionState.Jumping && s8(p.ySpeed) >= 0) {
+    p.playerState = PlayerMotionState.Falling;
+  }
 }

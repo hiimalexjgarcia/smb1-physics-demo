@@ -1,17 +1,39 @@
+/* Base layout */
 :root {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   color: #e8e8e8;
   background: #1a1a1a;
 }
-* { box-sizing: border-box; }
-body { margin: 0; display: flex; justify-content: center; }
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+}
+
 #app {
   width: 100%;
   max-width: 560px;
   padding: 12px;
 }
-h1 { margin: 0 0 4px; font-size: 20px; }
-.hint { margin: 0 0 8px; color: #aaa; font-size: 14px; line-height: 1.4; }
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.hint {
+  margin: 0 0 8px;
+  color: #aaa;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Game canvas */
 #game {
   display: block;
   width: 100%;
@@ -23,18 +45,31 @@ h1 { margin: 0 0 4px; font-size: 20px; }
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
-#debug {
+/* Debug panel */
+#debug-panel {
   margin-top: 8px;
   padding: 8px;
   background: #111;
   border: 1px solid #333;
-  font-size: 12px;
-  line-height: 1.4;
-  color: #9fdf9f;
-  overflow: auto;
   max-width: 512px;
 }
 
+#debug-state,
+#debug-help {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #9fdf9f;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#debug-help {
+  margin-top: 8px;
+  color: #8fcf8f;
+}
+
+/* Touch controls */
 #controls {
   margin-top: 12px;
   display: flex;
