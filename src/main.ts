@@ -33,6 +33,16 @@ function readButtons(): Buttons {
 let player = createPlayer();
 let cameraX = 0;
 
+let blinkUntil = 0;
+let nextBlinkAt = performance.now() + 1500 + Math.random() * 3000;
+
+function updateBlink(now: number) {
+  if (now >= nextBlinkAt) {
+    blinkUntil = now + 90 + Math.random() * 70;
+    nextBlinkAt = now + 1800 + Math.random() * 3500;
+  }
+}
+
 function reset() {
   player = createPlayer();
   // place on ground
@@ -178,8 +188,13 @@ function draw() {
   ctx.fillStyle = '#f8d878';
   ctx.fillRect(sx + 2, sy + 4, 12, 10);
   ctx.fillStyle = '#6b3f00';
-  if (player.facingDir === 1) ctx.fillRect(sx + 9, sy + 7, 4, 3);
-  else ctx.fillRect(sx + 3, sy + 7, 4, 3);
+  const eyeX = player.facingDir === 1 ? sx + 9 : sx + 3;
+  const blinking = performance.now() < blinkUntil;
+  if (blinking) {
+    ctx.fillRect(eyeX, sy + 8, 4, 1);
+  } else {
+    ctx.fillRect(eyeX, sy + 7, 4, 3);
+  }
   if (readButtons().b) {
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
@@ -202,6 +217,7 @@ reset();
 function frame(now: number) {
   acc += Math.min(100, now - last);
   last = now;
+  updateBlink(now);
   const btn = readButtons();
   while (acc >= STEP) {
     const prevPy = getPlayerPixelY(player);
