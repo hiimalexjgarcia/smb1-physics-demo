@@ -8,9 +8,23 @@
   <body>
     <div id="app">
       <h1>SMB Movement Demo</h1>
-      <p class="hint">WASD: move · SPACE: jump (A) · SHIFT: run (B) · R: reset</p>
+      <p class="hint">Keyboard: WASD/Arrows move · SPACE jump (A) · SHIFT run (B) · R reset. Mobile: use touch controls below.</p>
       <canvas id="game" width="512" height="480"></canvas>
       <pre id="debug"></pre>
+
+      <div id="controls" aria-label="Touch controls">
+        <div class="dpad" aria-label="Directional pad">
+          <button type="button" class="ctl ctl-up" data-btn="up" aria-label="Up">▲</button>
+          <button type="button" class="ctl ctl-left" data-btn="left" aria-label="Left">◀</button>
+          <button type="button" class="ctl ctl-down" data-btn="down" aria-label="Down">▼</button>
+          <button type="button" class="ctl ctl-right" data-btn="right" aria-label="Right">▶</button>
+        </div>
+        <div class="actions" aria-label="Actions">
+          <button type="button" class="ctl ctl-run" data-btn="b" aria-label="Run (B)">B<span>Run</span></button>
+          <button type="button" class="ctl ctl-jump" data-btn="a" aria-label="Jump (A)">A<span>Jump</span></button>
+          <button type="button" class="ctl ctl-reset" id="reset-btn" aria-label="Reset">↺<span>Reset</span></button>
+        </div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

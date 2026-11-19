@@ -10,15 +10,23 @@ const HEIGHT = canvas.height;
 const GROUND_Y = 400;
 
 const keys = new Set<string>();
+const touchButtons: Buttons = {
+  up: false,
+  down: false,
+  left: false,
+  right: false,
+  a: false,
+  b: false,
+};
 
 function readButtons(): Buttons {
   return {
-    up: keys.has('KeyW'),
-    down: keys.has('KeyS'),
-    left: keys.has('KeyA'),
-    right: keys.has('KeyD'),
-    a: keys.has('Space'),
-    b: keys.has('ShiftLeft') || keys.has('ShiftRight'),
+    up: keys.has('KeyW') || keys.has('ArrowUp') || touchButtons.up,
+    down: keys.has('KeyS') || keys.has('ArrowDown') || touchButtons.down,
+    left: keys.has('KeyA') || keys.has('ArrowLeft') || touchButtons.left,
+    right: keys.has('KeyD') || keys.has('ArrowRight') || touchButtons.right,
+    a: keys.has('Space') || touchButtons.a,
+    b: keys.has('ShiftLeft') || keys.has('ShiftRight') || touchButtons.b,
   };
 }
 
@@ -42,6 +50,65 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyR') reset();
 });
 window.addEventListener('keyup', (e) => keys.delete(e.code));
+
+function initTouchControls() {
+  const controls = document.getElementById('controls');
+  if (!controls) return;
+
+  const activePointers = new Map<number, keyof Buttons>();
+
+  const setPressed = (name: keyof Buttons, pressed: boolean) => {
+    touchButtons[name] = pressed;
+    const el = controls.querySelector<HTMLElement>(`[data-btn="${name}"]`);
+    if (el) el.classList.toggle('active', pressed);
+  };
+
+  const getButtonName = (el: HTMLElement | null): keyof Buttons | null => {
+    const btnEl = el?.closest<HTMLElement>('[data-btn]');
+    const name = btnEl?.dataset.btn;
+    if (!name) return null;
+    if (name === 'up' || name === 'down' || name === 'left' || name === 'right' || name === 'a' || name === 'b') {
+      return name;
+    }
+    return null;
+  };
+
+  controls.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  controls.addEventListener('pointerdown', (e) => {
+    const name = getButtonName(e.target as HTMLElement);
+    if (!name) return;
+    e.preventDefault();
+    const target = (e.target as HTMLElement).closest<HTMLElement>('[data-btn]');
+    target?.setPointerCapture(e.pointerId);
+    activePointers.set(e.pointerId, name);
+    setPressed(name, true);
+  });
+
+  const releasePointer = (e: PointerEvent) => {
+    const name = activePointers.get(e.pointerId);
+    if (!name) return;
+    activePointers.delete(e.pointerId);
+    const stillHeld = Array.from(activePointers.values()).includes(name);
+    if (!stillHeld) setPressed(name, false);
+  };
+
+  controls.addEventListener('pointerup', releasePointer);
+  controls.addEventListener('pointercancel', releasePointer);
+  controls.addEventListener('lostpointercapture', releasePointer as EventListener);
+
+  window.addEventListener('blur', () => {
+    activePointers.clear();
+    (Object.keys(touchButtons) as (keyof Buttons)[]).forEach((k) => setPressed(k, false));
+  });
+
+  document.getElementById('reset-btn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    reset();
+  });
+}
+
+initTouchControls();
 
 const platforms = [
   { x: 320, y: 320, w: 96, h: 16 },
