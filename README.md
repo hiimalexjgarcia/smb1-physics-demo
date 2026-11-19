@@ -75,7 +75,14 @@ The core logic in [`src/smbPhysics.ts`](src/smbPhysics.ts) models (land, non-wat
 
 ## Demo environment vs. original game
 
-This is **not** a full SMB1 engine. The demo provides a canvas "block" player, a flat ground, a few platforms, camera follow, and a debug HUD. The following are simplified or out of scope compared to the original: BG/tile collision, swimming/climbing, enemies/objects, slopes, power-up/damage states, exact scroll/camera rules, and complete animation/audio/timer subsystems.
+This is **not** a full SMB1 engine or ROM recreation. The demo provides a colored rectangular "block" player, flat ground, a few platforms, a simple smooth-follow camera, and a debug HUD. The following are simplified or out of scope compared to the original: tilemap and wall/ceiling collision, swimming/climbing, enemies/objects, slopes, power-up/damage states, exact scroll/camera rules, and complete animation/audio/timer subsystems.
+
+### Known caveats
+
+- Collision is intentionally minimal: landing on flat ground or on the top surface band of a platform. There are no walls, ceilings, or tile-based solid objects.
+- The camera is a simple smoothed horizontal follow, not SMB's scroll/camera engine.
+- The player is a colored rectangle rather than original SMB art. Random blinking and the post-idle "look at player/viewer" eye shift are cosmetic sprite effects only.
+- Keyboard state is not globally cleared when the window loses focus; touch state is. If focus changes while a key is held, the key may remain considered pressed until a matching `keyup` arrives.
 
 ## Binary analysis
 
