@@ -46,19 +46,11 @@ interface PresentationState {
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const maybeCtx = canvas.getContext('2d');
-const debugStateEl = document.getElementById('debug-state') as HTMLPreElement | null;
-const debugFallbackEl = document.getElementById('debug') as HTMLPreElement | null;
+const debugStateEl = document.getElementById('debug-state') as HTMLPreElement;
 if (!maybeCtx) {
   throw new Error('Canvas 2D context unavailable');
 }
 const ctx = maybeCtx;
-
-const STATIC_DEBUG_HELP = [
-  '',
-  'Controls: WASD/Arrows move, SPACE jump (A), SHIFT/B run, R reset (touch controls below canvas)',
-  'SMB1-derived: ProcJumping jump tables/tiers, JumpSwimSub variable-height (A hold + DiffToHaltJump),',
-  'ImposeGravity velocity integration + VerticalForce/VerticalForceDown, X_Physics speed/friction tiers.',
-].join('\n');
 
 const sim: SimState = { player: createPlayer() };
 const view: ViewState = { cameraX: 0 };
@@ -114,12 +106,7 @@ function resetSession(now = performance.now()): void {
 }
 
 function updateDebug(input: Buttons): void {
-  const text = debugInfo(sim.player, input) + STATIC_DEBUG_HELP;
-  if (debugStateEl) {
-    debugStateEl.textContent = text;
-  } else if (debugFallbackEl) {
-    debugFallbackEl.textContent = text;
-  }
+  debugStateEl.textContent = debugInfo(sim.player, input);
 }
 
 initInput(() => resetSession(performance.now()));

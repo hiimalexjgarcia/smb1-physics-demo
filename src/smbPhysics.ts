@@ -694,9 +694,3 @@ export function resolveDemoGround(p: PlayerState, groundY: number, playerHeight:
     p.playerState = PlayerMotionState.Falling;
   }
 }
-
-/** Convenience wrapper used by the demo: core step + flat ground resolution. */
-export function stepPlayer(p: PlayerState, btn: Buttons, groundY: number, playerHeight = 32): void {
-  stepPlayerPhysics(p, btn);
-  resolveDemoGround(p, groundY, playerHeight);
-}
