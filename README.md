@@ -47,13 +47,17 @@ npm run preview
 
 ```text
 .
-├─ index.html                 # App shell and canvas
+├─ index.html                 # App shell, canvas, and debug/help UI
 ├─ package.json               # Scripts and dev dependencies (Vite, TypeScript)
 ├─ tsconfig.json
 ├─ src/
-│  ├─ main.ts                 # Input, fixed-step loop, camera, rendering, demo collisions
+│  ├─ main.ts                 # App orchestrator: session state, fixed-step loop, and wiring
+│  ├─ config.ts               # Shared canvas/world/timing/view constants
+│  ├─ input.ts                # Keyboard/touch input handling and input-state snapshots
+│  ├─ world.ts                # Demo platforms and platform-collision resolution
+│  ├─ render.ts               # Canvas rendering (world, player sprite, HUD)
 │  ├─ smbPhysics.ts           # SMB-derived physics/state and integration routines
-│  └─ style.css               # Layout, responsive canvas, and touch controls styling
+│  └─ style.css               # Layout, responsive canvas, debug panel, and touch controls
 └─ docs/
    └─ binary-analysis.md      # Binary analysis and disassembly-correlation notes
 ```
@@ -81,7 +85,8 @@ Background on the analyzed artifact (`smb_prg_8000.bin` headerless PRG, 6502 at 
 
 ## Development notes
 
-- **Refactor:** `smbPhysics.ts` was refactored for readability (named constants for SMB states/directions/tables, structured sections, routine-level docs) while preserving physics behavior.
+- **Demo/app structure:** `main.ts` is a thin orchestrator; input, world/collision helpers, rendering, and shared constants live in dedicated modules (`src/input.ts`, `src/world.ts`, `src/render.ts`, `src/config.ts`). Rendering is driven by explicit view/presentation state (camera, blink, idle-look, run highlight) instead of reading input/time internally.
+- **Physics core:** `smbPhysics.ts` keeps SMB-correlated routine structure and naming; core frame integration (`stepPlayerPhysics`) is separated from demo ground resolution (`resolveDemoGround`), with `stepPlayer` retained as a convenience wrapper. Unused code was removed and player motion state typing was tightened.
 - **Responsive canvas:** the game renders to a 512×480 buffer and scales to fit smaller screens while preserving aspect ratio (pixelated). On-screen touch controls support mobile play.
 
 ## Disclaimer
