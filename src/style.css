@@ -47,7 +47,7 @@ h1 {
 }
 /* Debug panel */
 #debug-panel {
-  margin-top: 8px;
+  margin-top: 12px;
   padding: 8px;
   background: #111;
   border: 1px solid #333;
@@ -71,7 +71,7 @@ h1 {
 
 /* Touch controls */
 #controls {
-  margin-top: 12px;
+  margin-top: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;

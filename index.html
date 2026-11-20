@@ -10,12 +10,6 @@
       <h1>SMB Movement Demo</h1>
       <p class="hint">Keyboard: WASD/Arrows move · SPACE jump (A) · SHIFT run (B) · R reset. Mobile: use touch controls below.</p>
       <canvas id="game" width="512" height="480"></canvas>
-      <div id="debug-panel" aria-label="Debug info">
-        <pre id="debug-state"></pre>
-        <pre id="debug-help">Controls: WASD/Arrows move, SPACE jump (A), SHIFT/B run, R reset (touch controls below canvas)
-SMB1-derived: ProcJumping jump tables/tiers, JumpSwimSub variable-height (A hold + DiffToHaltJump),
-ImposeGravity velocity integration + VerticalForce/VerticalForceDown, X_Physics speed/friction tiers.</pre>
-      </div>
 
       <div id="controls" aria-label="Touch controls">
         <div class="dpad" aria-label="Directional pad">
@@ -29,6 +23,13 @@ ImposeGravity velocity integration + VerticalForce/VerticalForceDown, X_Physics 
           <button type="button" class="ctl ctl-jump" data-btn="a" aria-label="Jump (A)">A<span>Jump</span></button>
           <button type="button" class="ctl ctl-reset" id="reset-btn" aria-label="Reset">↺<span>Reset</span></button>
         </div>
+      </div>
+
+      <div id="debug-panel" aria-label="Debug info">
+        <pre id="debug-state"></pre>
+        <pre id="debug-help">Controls: WASD/Arrows move, SPACE jump (A), SHIFT/B run, R reset (touch controls below canvas)
+SMB1-derived: ProcJumping jump tables/tiers, JumpSwimSub variable-height (A hold + DiffToHaltJump),
+ImposeGravity velocity integration + VerticalForce/VerticalForceDown, X_Physics speed/friction tiers.</pre>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
