@@ -1,4 +1,4 @@
-import type { Buttons } from './smbPhysics';
+import { isControlButton, type Buttons, type ControlName } from './controls';
 
 const PREVENTED_KEYS = new Set([
   'Space',
@@ -35,17 +35,13 @@ export function readInput(): Buttons {
   };
 }
 
-function isControlButton(name: string | undefined): name is keyof Buttons {
-  return name === 'up' || name === 'down' || name === 'left' || name === 'right' || name === 'a' || name === 'b';
-}
-
 export function initInput(onReset: () => void): void {
   window.addEventListener('keydown', (e) => {
     if (PREVENTED_KEYS.has(e.code)) {
       e.preventDefault();
     }
     keys.add(e.code);
-    if (e.code === 'KeyR') onReset();
+    if (e.code === 'KeyR' && !e.repeat) onReset();
   });
 
   window.addEventListener('keyup', (e) => {
@@ -53,9 +49,9 @@ export function initInput(onReset: () => void): void {
   });
 
   const controls = document.getElementById('controls');
-  const activePointers = new Map<number, keyof Buttons>();
+  const activePointers = new Map<number, ControlName>();
 
-  const setPressed = (name: keyof Buttons, pressed: boolean) => {
+  const setPressed = (name: ControlName, pressed: boolean) => {
     touchButtons[name] = pressed;
     const el = controls?.querySelector<HTMLElement>(`[data-btn="${name}"]`);
     if (el) el.classList.toggle('active', pressed);
@@ -65,7 +61,7 @@ export function initInput(onReset: () => void): void {
   const clearAllInput = () => {
     keys.clear();
     activePointers.clear();
-    (Object.keys(touchButtons) as (keyof Buttons)[]).forEach((k) => setPressed(k, false));
+    (Object.keys(touchButtons) as ControlName[]).forEach((k) => setPressed(k, false));
   };
 
   window.addEventListener('blur', clearAllInput);
@@ -73,9 +69,15 @@ export function initInput(onReset: () => void): void {
     if (document.hidden) clearAllInput();
   });
 
+  // Reset wiring is independent of the d-pad markup, so register it first.
+  document.getElementById('reset-btn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    onReset();
+  });
+
   if (!controls) return;
 
-  const getButtonName = (el: HTMLElement | null): keyof Buttons | null => {
+  const getButtonName = (el: HTMLElement | null): ControlName | null => {
     const btnEl = el?.closest<HTMLElement>('[data-btn]');
     const name = btnEl?.dataset.btn;
     return isControlButton(name) ? name : null;
@@ -104,9 +106,4 @@ export function initInput(onReset: () => void): void {
   controls.addEventListener('pointerup', releasePointer);
   controls.addEventListener('pointercancel', releasePointer);
   controls.addEventListener('lostpointercapture', releasePointer as EventListener);
-
-  document.getElementById('reset-btn')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    onReset();
-  });
 }

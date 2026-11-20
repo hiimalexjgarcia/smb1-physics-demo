@@ -47,21 +47,38 @@ npm run preview
 
 > `npm run build` runs `tsc && vite build`. If `tsc` is not on your `PATH`, use the local binaries (e.g. `./node_modules/.bin/tsc && ./node_modules/.bin/vite build`) or run via npm scripts after install.
 
+### Tests
+
+```bash
+npm test
+```
+
+Tests use Node's built-in `node:test` runner. `esbuild` bundles the TypeScript test files before execution; no separate test framework is required.
+
 ## Project structure
 
 ```text
 .
 ├─ index.html                 # App shell, canvas, and debug/help UI
-├─ package.json               # Scripts and dev dependencies (Vite, TypeScript)
+├─ package.json               # Scripts and dev dependencies (Vite, TypeScript, esbuild)
 ├─ tsconfig.json
 ├─ src/
-│  ├─ main.ts                 # App orchestrator: session state, fixed-step loop, and wiring
+│  ├─ main.ts                 # Thin app bootstrap and fixed-step frame loop
 │  ├─ config.ts               # Shared canvas/world/timing/view constants
+│  ├─ controls.ts             # Normalized Buttons type and control-name helpers
 │  ├─ input.ts                # Keyboard/touch input handling and input-state snapshots
+│  ├─ idleBehavior.ts         # Idle look/blink/attention-hop state machine
+│  ├─ simulation.ts           # One-step simulation and collision ordering
+│  ├─ byteMath.ts             # Shared 6502-style byte/carry helpers
 │  ├─ world.ts                # Demo platforms and platform-collision resolution
 │  ├─ render.ts               # Canvas rendering (world, player sprite, HUD)
 │  ├─ smbPhysics.ts           # SMB-derived physics/state and integration routines
 │  └─ style.css               # Layout, responsive canvas, debug panel, and touch controls
+├─ tests/
+│  ├─ byteMath.test.ts        # Byte/carry helper tests
+│  ├─ idleBehavior.test.ts    # Idle timing and attention-hop tests
+│  ├─ physics.test.ts         # Jump, acceleration, and landing tests
+│  └─ world.test.ts           # Platform landing tests
 └─ docs/
    └─ binary-analysis.md      # Binary analysis and disassembly-correlation notes
 ```
@@ -75,7 +92,7 @@ The core logic in [`src/smbPhysics.ts`](src/smbPhysics.ts) models (land, non-wat
 - **Gravity/integration** (`ImposeGravity` / `MovePlayerVertically`): velocity-first integration with fractional accumulators, signed speeds, and SMB-style clamping.
 - **Horizontal movement** (`X_Physics`, `ImposeFriction`, `MovePlayerHorizontally`): max-speed and friction tiers from `MaxLeftXSpdData`, `MaxRightXSpdData`, `FrictionData`, with running/skid-related side effects modeled for movement.
 
-**Implementation detail:** NES math uses unsigned byte ADC/SBC carries with separate sign-extension for high bytes; position integration preserves this (not signed-JS carry math) so left/up movement behaves correctly. See [docs/binary-analysis.md](docs/binary-analysis.md) for details.
+**Implementation detail:** NES math uses unsigned byte ADC/SBC carries with separate sign-extension for high bytes. Those helpers now live in [`src/byteMath.ts`](src/byteMath.ts) and are shared with demo collision code, so left/up movement keeps its 6502-style behavior without duplicating carry logic. See [docs/binary-analysis.md](docs/binary-analysis.md) for background.
 
 ## Demo environment vs. original game
 
@@ -95,8 +112,8 @@ Background on the analyzed artifact (`smb_prg_8000.bin` headerless PRG, 6502 at 
 
 ## Development notes
 
-- **Demo/app structure:** `main.ts` is a thin orchestrator; input, world/collision helpers, rendering, and shared constants live in dedicated modules (`src/input.ts`, `src/world.ts`, `src/render.ts`, `src/config.ts`). Rendering is driven by explicit view/presentation state (camera, blink, idle-look, run highlight) instead of reading input/time internally.
-- **Physics core:** `smbPhysics.ts` keeps SMB-correlated routine structure and naming; core frame integration (`stepPlayerPhysics`) is separated from demo ground resolution (`resolveDemoGround`). Unused code was removed and player motion state typing was tightened.
+- **Demo/app structure:** `main.ts` only wires modules and runs the fixed-step loop. Simulation order lives in `src/simulation.ts`, idle/presentation behavior in `src/idleBehavior.ts`, input types in `src/controls.ts`, and byte arithmetic in `src/byteMath.ts`. Rendering is split into small drawing helpers and driven by explicit view state.
+- **Physics core:** `smbPhysics.ts` keeps SMB-correlated routine structure and naming. Landing cleanup is shared by ground and platform collisions via `landPlayerAt`, and jump tiers are explicitly clamped to the land-only range. The unused `upMode` gravity branch was removed.
 - **Responsive canvas:** the game renders to a 512×480 buffer and scales to fit smaller screens while preserving aspect ratio (pixelated). On-screen touch controls appear only on touch-capable devices and support mobile play.
 - **Input focus handling:** keyboard and touch state are cleared when the window loses focus or the document becomes hidden, preventing stuck inputs after tab/app switches.
 

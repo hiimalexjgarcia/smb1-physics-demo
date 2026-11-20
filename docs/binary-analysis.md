@@ -71,7 +71,7 @@ During investigation of "excessive acceleration when moving left or jumping", th
 
 - The 6502 `ADC` produces a carry from **unsigned** byte addition. SMB integrates position bytes with speed/fractional carries as unsigned ADC chains while applying sign-extension (`$00/$FF`) to the page/high byte separately.
 - A pre-fix demo implementation computed page/high-byte carry using signed JavaScript sums (e.g. `Math.floor` on signed results). For leftward (negative nibble component) and upward (negative `Y_Speed`) movement this introduced spurious `-1` carries in common non-wrap cases, causing too-large displacement per frame.
-- **Fix (applied):** compute position-byte carry from the unsigned byte sum (`> 0xFF ? 1 : 0`) and add the sign-extension term separately in both horizontal and vertical integration (see `movePlayerHorizontally` and `imposeGravity` in `src/smbPhysics.ts`).
+- **Fix (applied):** compute position-byte carry from the unsigned byte sum (`> 0xFF ? 1 : 0`) and add the sign-extension term separately in both horizontal and vertical integration. These helpers now live in `src/byteMath.ts` and are used by `movePlayerHorizontally` and `imposeGravity` in `src/smbPhysics.ts`.
 
 This preserves SMB-like behavior: signed speeds/forces control direction and magnitude, but address/page carries follow unsigned byte ADC semantics.
 
@@ -80,4 +80,4 @@ This preserves SMB-like behavior: signed speeds/forces control direction and mag
 - **Artifact access:** the iNES ROM could not be opened directly via REA in this environment; analysis used a headerless PRG image and disassembly correlation.
 - **Evidence type:** parts of the trace are static/decode-level and correlated to `SMBDIS.ASM` names/behavior; not every mapped routine was independently recovered as a named procedure with complete call-graph evidence.
 - **Subset:** implementation targets land movement/jump/gravity feel (non-water). Swimming, climbing, enemy/object interactions, BG tile collision, slopes, damage/power-up state machines, exact subpixel/camera/scroll engine behavior, and full animation/timer systems are simplified or omitted.
-- **Demo glue:** ground and platform collisions are canvas/demo approximations layered on top of the SMB-derived physics core. In code, the SMB-like frame step (`stepPlayerPhysics` in `src/smbPhysics.ts`) is separated from demo environment resolution (`resolveDemoGround` in `src/smbPhysics.ts`, platform landings in `src/world.ts`).
+- **Demo glue:** ground and platform collisions are canvas/demo approximations layered on top of the SMB-derived physics core. `stepSimulation` in `src/simulation.ts` orders the SMB-like frame step (`stepPlayerPhysics`), ground resolution (`resolveDemoGround`), and platform landings (`src/world.ts`). Both collision paths share `landPlayerAt` in `src/smbPhysics.ts`.

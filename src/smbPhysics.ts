@@ -19,20 +19,17 @@
  *   this module preserves that behavior (important for left/up movement).
  */
 
-export interface Buttons {
-  /** D-pad right */
-  right: boolean;
-  /** D-pad left */
-  left: boolean;
-  /** D-pad down */
-  down: boolean;
-  /** D-pad up */
-  up: boolean;
-  /** A button (SPACE): jump */
-  a: boolean;
-  /** B button (SHIFT): run */
-  b: boolean;
-}
+import {
+  addWithCarry,
+  s8,
+  signExtensionByte,
+  signExtensionDelta,
+  subWithBorrow,
+  u8,
+} from './byteMath';
+import type { Buttons } from './controls';
+
+export { signedByte } from './byteMath';
 
 /** Player_State ($1D): movement sub dispatch. */
 export const PlayerMotionState = {
@@ -121,19 +118,6 @@ export interface PlayerState {
 }
 
 // ---------------------------------------------------------------------------
-// 8-bit helpers
-// ---------------------------------------------------------------------------
-
-/** Mask to an unsigned byte (0..255). */
-const u8 = (n: number): number => n & 0xff;
-
-/** Interpret a byte as signed (-128..127). */
-const s8 = (n: number): number => {
-  const v = n & 0xff;
-  return v & 0x80 ? v - 256 : v;
-};
-
-// ---------------------------------------------------------------------------
 // SMBDIS.ASM data tables (land-relevant entries)
 // ---------------------------------------------------------------------------
 
@@ -145,6 +129,12 @@ const FALL_M_FORCE_DATA = [0x70, 0x70, 0x60, 0x90, 0x90, 0x0a, 0x09] as const;
 const PLAYER_Y_SPEED_DATA = [0xfc, 0xfc, 0xfc, 0xfb, 0xfb, 0xfe, 0xff] as const;
 /** Initial vertical move-force by tier. */
 const INIT_M_FORCE_DATA = [0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00] as const;
+
+/**
+ * The SMB tables above contain seven entries, but indexes 5-6 are swim/water
+ * tiers. This demo only models land movement, so jump tiers are clamped to 0-4.
+ */
+const LAND_JUMP_TIER_COUNT = 5;
 
 /** MaxLeftXSpdData: -40, -24, -16 */
 const MAX_LEFT_X_SPEED_DATA = [0xd8, 0xe8, 0xf0] as const;
@@ -161,13 +151,15 @@ function isLeft(dir: number): boolean {
   return dir === Direction.Left;
 }
 
+/** Clamp a computed index to a table's valid range. */
+function clampTableIndex(value: number, table: readonly unknown[]): number {
+  return Math.max(0, Math.min(table.length - 1, value));
+}
+
 /** L/R input as SMB movement direction code (0 = none). */
 function leftRightPressed(btn: Buttons): number {
-  if (btn.right && !btn.left) return Direction.Right;
-  if (btn.left && !btn.right) return Direction.Left;
-  if (btn.right) return Direction.Right;
-  if (btn.left) return Direction.Left;
-  return 0;
+  if (btn.right === btn.left) return 0;
+  return btn.right ? Direction.Right : Direction.Left;
 }
 
 /** Update movingDir from current signed X speed (or held direction when stopped). */
@@ -239,10 +231,36 @@ export function getPlayerPixelY(p: PlayerState): number {
   return p.yHigh * 256 + p.yPos;
 }
 
+export function setPlayerPixelX(p: PlayerState, px: number): void {
+  const v = Math.max(0, Math.min(0xffff, Math.round(px)));
+  p.xPage = (v >> 8) & 0xff;
+  p.xPos = v & 0xff;
+}
+
 export function setPlayerPixelY(p: PlayerState, py: number): void {
   const v = Math.max(0, Math.min(0xffff, Math.round(py)));
   p.yHigh = (v >> 8) & 0xff;
   p.yPos = v & 0xff;
+}
+
+/** True while physics still considers the player to be moving. */
+export function hasActiveMotion(p: PlayerState): boolean {
+  return (
+    p.xSpeed !== 0 ||
+    p.ySpeed !== 0 ||
+    !p.onGround ||
+    p.playerState !== PlayerMotionState.OnGround
+  );
+}
+
+/** Shared landing cleanup for ground and platform collisions. */
+export function landPlayerAt(p: PlayerState, py: number): void {
+  setPlayerPixelY(p, py);
+  p.ySpeed = 0;
+  p.yMoveForce = 0;
+  p.yMFDummy = 0;
+  p.playerState = PlayerMotionState.OnGround;
+  p.onGround = true;
 }
 
 export function debugInfo(p: PlayerState, btn: Buttons): string {
@@ -306,9 +324,8 @@ function setXSpeedAbsFromSpeed(p: PlayerState): void {
 
 /** LeftFrict: increases X speed toward the right / maximum right speed. */
 function applyLeftFriction(p: PlayerState): void {
-  const sum = p.xMoveForce + p.frictionAdderLow;
-  p.xMoveForce = u8(sum);
-  const carry = sum > 0xff ? 1 : 0;
+  const { value, carry } = addWithCarry(p.xMoveForce, p.frictionAdderLow);
+  p.xMoveForce = value;
 
   const nextSpeed = s8(p.xSpeed) + s8(p.frictionAdderHigh) + carry;
   p.xSpeed = u8(nextSpeed);
@@ -321,9 +338,8 @@ function applyLeftFriction(p: PlayerState): void {
 
 /** RghtFrict: decreases X speed toward the left / maximum left speed. */
 function applyRightFriction(p: PlayerState): void {
-  const diff = p.xMoveForce - p.frictionAdderLow;
-  p.xMoveForce = u8(diff);
-  const borrow = diff < 0 ? 1 : 0;
+  const { value, borrow } = subWithBorrow(p.xMoveForce, p.frictionAdderLow);
+  p.xMoveForce = value;
 
   const nextSpeed = s8(p.xSpeed) - s8(p.frictionAdderHigh) - borrow;
   p.xSpeed = u8(nextSpeed);
@@ -376,18 +392,15 @@ function movePlayerHorizontally(p: PlayerState): void {
 
   const speedNibbleSigned = s8(highNibble); // n0 (signed contribution)
   const speedNibbleByte = u8(speedNibbleSigned); // same byte value for unsigned ADC
-  const pageSignExtension = speedNibbleSigned >= 0 ? 0x00 : 0xff;
 
   // Fractional accumulator: X_MoveForce += n1
-  const sumForce = p.xMoveForce + fractionalDelta;
-  const carryFromForce = sumForce > 0xff ? 1 : 0;
-  p.xMoveForce = u8(sumForce);
+  const { value: moveForce, carry: carryFromForce } = addWithCarry(p.xMoveForce, fractionalDelta);
+  p.xMoveForce = moveForce;
 
   // Position byte: unsigned ADC with carry, then apply sign-extension to page
-  const posSum = p.xPos + speedNibbleByte + carryFromForce;
-  const carryToPage = posSum > 0xff ? 1 : 0;
-  p.xPos = u8(posSum);
-  p.xPage = u8(p.xPage + pageSignExtension + carryToPage);
+  const { value: pos, carry: carryToPage } = addWithCarry(p.xPos, speedNibbleByte, carryFromForce);
+  p.xPos = pos;
+  p.xPage = u8(p.xPage + signExtensionByte(speedNibbleSigned) + carryToPage);
 
   // Player_X_Scroll result
   p.playerXScroll = u8(carryFromForce + speedNibbleSigned);
@@ -398,39 +411,26 @@ function movePlayerHorizontally(p: PlayerState): void {
 // ---------------------------------------------------------------------------
 
 /**
- * SMB ImposeGravity:
+ * SMB ImposeGravity (land/player subset):
  * 1) yMFDummy += yMoveForce (carry out)
  * 2) integrate Y position by ySpeed (+ carry, + sign extension on high byte)
  * 3) apply downForce to yMoveForce/ySpeed
  * 4) clamp downward to maxSpeed when in fast-fall fractional range
- * (upMode path exists in SMB for upward/platform cases; unused for normal player gravity)
  */
-function imposeGravity(
-  p: PlayerState,
-  downForce: number,
-  maxDownSpeed: number,
-  upMode: boolean,
-  upForce = 0,
-): void {
+function imposeGravity(p: PlayerState, downForce: number, maxDownSpeed: number): void {
   // 1) Dummy fractional accumulator
-  const sumDummy = p.yMFDummy + p.yMoveForce;
-  const carryDummy = sumDummy > 0xff ? 1 : 0;
-  p.yMFDummy = u8(sumDummy);
+  const { value: dummy, carry: carryDummy } = addWithCarry(p.yMFDummy, p.yMoveForce);
+  p.yMFDummy = dummy;
 
   // 2) Position integration: unsigned ADC for carry, separate sign extension for high byte
   const ySpeedSigned = s8(p.ySpeed);
-  const ySpeedByte = u8(p.ySpeed);
-  const signExtensionTerm = ySpeedSigned < 0 ? -1 : 0;
-
-  const posSum = p.yPos + ySpeedByte + carryDummy;
-  const carryToHigh = posSum > 0xff ? 1 : 0;
-  p.yPos = u8(posSum);
-  p.yHigh = u8(p.yHigh + signExtensionTerm + carryToHigh);
+  const { value: pos, carry: carryToHigh } = addWithCarry(p.yPos, u8(p.ySpeed), carryDummy);
+  p.yPos = pos;
+  p.yHigh = u8(p.yHigh + signExtensionDelta(ySpeedSigned) + carryToHigh);
 
   // 3) Apply gravity/force to velocity accumulators
-  const moveForceSum = p.yMoveForce + downForce;
-  const carryToSpeed = moveForceSum > 0xff ? 1 : 0;
-  p.yMoveForce = u8(moveForceSum);
+  const { value: moveForce, carry: carryToSpeed } = addWithCarry(p.yMoveForce, downForce);
+  p.yMoveForce = moveForce;
   p.ySpeed = u8(s8(p.ySpeed) + carryToSpeed);
 
   // 4) Clamp downward speed (positive in SMB coordinates)
@@ -438,24 +438,11 @@ function imposeGravity(
     p.ySpeed = u8(maxDownSpeed);
     p.yMoveForce = 0x00;
   }
-
-  if (upMode) {
-    const negMaxSpeed = -s8(maxDownSpeed);
-    const moveForceDiff = p.yMoveForce - upForce;
-    const borrow = moveForceDiff < 0 ? 1 : 0;
-    p.yMoveForce = u8(moveForceDiff);
-    p.ySpeed = u8(s8(p.ySpeed) - borrow);
-
-    if (s8(p.ySpeed) < negMaxSpeed && p.yMoveForce < 0x80) {
-      p.ySpeed = u8(negMaxSpeed);
-      p.yMoveForce = 0xff;
-    }
-  }
 }
 
 /** Player MovePlayerVertically: apply current VerticalForce with max fall speed $04. */
 function movePlayerVertically(p: PlayerState): void {
-  imposeGravity(p, p.verticalForce, 0x04, false);
+  imposeGravity(p, p.verticalForce, 0x04);
 }
 
 // ---------------------------------------------------------------------------
@@ -507,14 +494,10 @@ function getXPhysicsParams(
 function xPhysics(p: PlayerState, btn: Buttons): void {
   const { maxSpeedTier, frictionTier } = getXPhysicsParams(p, btn);
 
-  const leftTier = Math.max(0, Math.min(2, maxSpeedTier));
-  p.maximumLeftSpeed = u8(MAX_LEFT_X_SPEED_DATA[leftTier]);
+  p.maximumLeftSpeed = u8(MAX_LEFT_X_SPEED_DATA[clampTableIndex(maxSpeedTier, MAX_LEFT_X_SPEED_DATA)]);
+  p.maximumRightSpeed = u8(MAX_RIGHT_X_SPEED_DATA[clampTableIndex(maxSpeedTier, MAX_RIGHT_X_SPEED_DATA)]);
 
-  const rightTier = Math.max(0, Math.min(3, maxSpeedTier));
-  p.maximumRightSpeed = u8(MAX_RIGHT_X_SPEED_DATA[rightTier]);
-
-  const t = Math.max(0, Math.min(2, frictionTier));
-  p.frictionAdderLow = FRICTION_DATA[t];
+  p.frictionAdderLow = FRICTION_DATA[clampTableIndex(frictionTier, FRICTION_DATA)];
   p.frictionAdderHigh = 0x00;
 
   if (p.facingDir !== p.movingDir) {
@@ -536,7 +519,7 @@ function getJumpTierFromXSpeedAbs(xSpeedAbs: number): number {
   if (xSpeedAbs >= 0x10) tier++;
   if (xSpeedAbs >= 0x19) tier++;
   if (xSpeedAbs >= 0x1c) tier++;
-  return tier; // 0-4 on land
+  return Math.min(tier, LAND_JUMP_TIER_COUNT - 1); // 0-4 on land
 }
 
 /**
@@ -675,12 +658,7 @@ export function resolveDemoGround(p: PlayerState, groundY: number, playerHeight:
   const py = getPlayerPixelY(p);
 
   if (py + playerHeight >= groundY) {
-    setPlayerPixelY(p, groundY - playerHeight);
-    p.ySpeed = 0;
-    p.yMoveForce = 0;
-    p.yMFDummy = 0;
-    p.playerState = PlayerMotionState.OnGround;
-    p.onGround = true;
+    landPlayerAt(p, groundY - playerHeight);
     return;
   }
 
