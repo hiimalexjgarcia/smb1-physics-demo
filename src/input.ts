@@ -53,15 +53,27 @@ export function initInput(onReset: () => void): void {
   });
 
   const controls = document.getElementById('controls');
-  if (!controls) return;
-
   const activePointers = new Map<number, keyof Buttons>();
 
   const setPressed = (name: keyof Buttons, pressed: boolean) => {
     touchButtons[name] = pressed;
-    const el = controls.querySelector<HTMLElement>(`[data-btn="${name}"]`);
+    const el = controls?.querySelector<HTMLElement>(`[data-btn="${name}"]`);
     if (el) el.classList.toggle('active', pressed);
   };
+
+  /** Clear held keys/buttons so focus changes never leave input stuck on. */
+  const clearAllInput = () => {
+    keys.clear();
+    activePointers.clear();
+    (Object.keys(touchButtons) as (keyof Buttons)[]).forEach((k) => setPressed(k, false));
+  };
+
+  window.addEventListener('blur', clearAllInput);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearAllInput();
+  });
+
+  if (!controls) return;
 
   const getButtonName = (el: HTMLElement | null): keyof Buttons | null => {
     const btnEl = el?.closest<HTMLElement>('[data-btn]');
@@ -92,11 +104,6 @@ export function initInput(onReset: () => void): void {
   controls.addEventListener('pointerup', releasePointer);
   controls.addEventListener('pointercancel', releasePointer);
   controls.addEventListener('lostpointercapture', releasePointer as EventListener);
-
-  window.addEventListener('blur', () => {
-    activePointers.clear();
-    (Object.keys(touchButtons) as (keyof Buttons)[]).forEach((k) => setPressed(k, false));
-  });
 
   document.getElementById('reset-btn')?.addEventListener('click', (e) => {
     e.preventDefault();
