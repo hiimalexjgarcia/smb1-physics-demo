@@ -19,6 +19,10 @@ The project is built with **Vite** and **TypeScript** (vanilla, no framework).
 
 On touch-capable devices, on-screen controls appear below the canvas: a directional pad plus **A** (Jump), **B** (Run), and Reset buttons. Touch and hold buttons for continuous input (including holding Jump for a higher jump). The canvas renders at 512×480 internally and scales to fit smaller screens.
 
+## Idle behavior
+
+After 5 seconds without input or movement, the player's eye centers as if looking at the viewer. After 10 seconds, blinking becomes more frequent and the player periodically performs a short, autonomous hop to get attention. Any input returns the player to normal behavior and restarts both idle timers.
+
 ## Getting started
 
 ### Prerequisites
@@ -81,7 +85,7 @@ This is **not** a full SMB1 engine or ROM recreation. The demo provides a colore
 
 - Collision is intentionally minimal: landing on flat ground or on the top surface band of a platform. There are no walls, ceilings, or tile-based solid objects.
 - The camera is a simple smoothed horizontal follow, not SMB's scroll/camera engine.
-- The player is a colored rectangle rather than original SMB art. Random blinking and the post-idle "look at player/viewer" eye shift are cosmetic sprite effects only.
+- The player is a colored rectangle rather than original SMB art. Random blinking, the post-idle "look at player/viewer" eye shift, and extended-idle attention hops are demo-only cosmetic effects.
 
 ## Binary analysis
 
