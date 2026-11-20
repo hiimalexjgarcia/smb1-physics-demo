@@ -17,7 +17,7 @@ The project is built with **Vite** and **TypeScript** (vanilla, no framework).
 
 **Mobile / touch**
 
-On-screen controls appear below the canvas: a directional pad plus **A** (Jump), **B** (Run), and Reset buttons. Touch and hold buttons for continuous input (including holding Jump for a higher jump). The canvas renders at 512×480 internally and scales to fit smaller screens.
+On touch-capable devices, on-screen controls appear below the canvas: a directional pad plus **A** (Jump), **B** (Run), and Reset buttons. Touch and hold buttons for continuous input (including holding Jump for a higher jump). The canvas renders at 512×480 internally and scales to fit smaller screens.
 
 ## Getting started
 
@@ -93,7 +93,7 @@ Background on the analyzed artifact (`smb_prg_8000.bin` headerless PRG, 6502 at 
 
 - **Demo/app structure:** `main.ts` is a thin orchestrator; input, world/collision helpers, rendering, and shared constants live in dedicated modules (`src/input.ts`, `src/world.ts`, `src/render.ts`, `src/config.ts`). Rendering is driven by explicit view/presentation state (camera, blink, idle-look, run highlight) instead of reading input/time internally.
 - **Physics core:** `smbPhysics.ts` keeps SMB-correlated routine structure and naming; core frame integration (`stepPlayerPhysics`) is separated from demo ground resolution (`resolveDemoGround`). Unused code was removed and player motion state typing was tightened.
-- **Responsive canvas:** the game renders to a 512×480 buffer and scales to fit smaller screens while preserving aspect ratio (pixelated). On-screen touch controls support mobile play.
+- **Responsive canvas:** the game renders to a 512×480 buffer and scales to fit smaller screens while preserving aspect ratio (pixelated). On-screen touch controls appear only on touch-capable devices and support mobile play.
 - **Input focus handling:** keyboard and touch state are cleared when the window loses focus or the document becomes hidden, preventing stuck inputs after tab/app switches.
 
 ## Disclaimer
